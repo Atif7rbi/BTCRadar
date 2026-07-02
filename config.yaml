@@ -1,0 +1,124 @@
+app:
+  name: BTCRadar
+  host: 0.0.0.0
+  port: 5005
+  debug: false
+
+runtime:
+  mock_data: false          # اجعله true إذا كانت Binance محجوبة أو للاختبار فقط
+  background_services_enabled: false  # hosting: Cron owns Coinalyze; Flask is reader/controller
+  price_refresh_sec: 5      # السعر يتحدث كل 5 ثواني
+  ls_refresh_sec: 900       # LS يتحدث كل 15 دقائق
+  api_timeout_sec: 8
+
+account:
+  initial_equity_usd: 1000.0
+
+auto_guard:
+  enabled: true
+  take_profit_pct: 5.0
+  stop_loss_pct: -10.0
+  close_size_pct: 100
+
+symbols:
+  driver: BTCUSDT
+  followers:
+    - SOLUSDT
+    - XRPUSDT
+    - ADAUSDT
+    - DOGEUSDT
+    - ETHUSDT
+
+market_monitor:
+  enabled: true
+  snapshot_interval_minutes: 60
+  reaction_windows_minutes: [60, 240, 1440]
+  symbols:
+    - BTCUSDT
+    - SOLUSDT
+    - XRPUSDT
+    - ADAUSDT
+    - DOGEUSDT
+    - ETHUSDT
+  sessions_ksa:
+    tokyo: [3, 12]
+    london: [11, 20]
+    new_york: [16, 1]
+
+strategy:
+  weights:
+    ls_posit: 0.45
+    ls_ratio: 0.35
+    ls_account: 0.20
+  thresholds:
+    min_score: 15.0
+    min_spread: 3.0
+    min_votes: 2
+
+follow_score:
+  enabled: true
+  sort_followers: true
+  weights:
+    btc_alignment: 0.45
+    own_crowding: 0.35
+    account_alignment: 0.20
+  readonly_inputs:
+    oi: true
+    cvd: true
+
+price_providers:
+  priority: [okx, coinbase, kraken]
+  timeout_sec: 3
+
+storage:
+  db_path: data/btc_radar.db
+
+logging:
+  path: logs/btc_radar.log
+  level: INFO
+
+ui:
+  theme:
+    bg: '#071421'
+    panel: '#0b1d2f'
+    border: '#173a5a'
+    accent: '#21a7ff'
+    long: '#58f56b'
+    short: '#ff4d4d'
+    warning: '#ffd84a'
+
+coinalyze:
+  enabled: true
+  refresh_minutes: 15
+  interval: 1hour
+  timeout_sec: 12
+  # Default Coinalyze Binance USDT perpetual mapping.
+  # If any symbol does not work, change it here without changing code.
+  symbol_map:
+    BTCUSDT: BTCUSDT_PERP.A
+    ETHUSDT: ETHUSDT_PERP.A
+    SOLUSDT: SOLUSDT_PERP.A
+    DOGEUSDT: DOGEUSDT_PERP.A
+    XRPUSDT: XRPUSDT_PERP.A
+    ADAUSDT: ADAUSDT_PERP.A
+
+alerts:
+  enabled: true
+  cooldown_minutes: 60
+  funding_extreme_enabled: true
+  funding_extreme_pct: 0.02
+  verdict_change_enabled: false
+  telegram:
+    timeout_sec: 10
+
+
+trade_lifecycle:
+  enabled: true
+  pnl_bucket_pct: 1.0
+  health_delta_threshold: 10.0
+  pain_delta_threshold: 10.0
+  funding_delta_threshold: 0.00005
+  ls_delta_threshold: 3.0
+  spread_delta_threshold: 5.0
+  votes_change_enabled: true
+  spread_change_enabled: true

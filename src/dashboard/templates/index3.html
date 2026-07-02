@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BTCRadar Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <aside id="sidebar" class="sidebar">
+    <div class="brand">
+      <div class="logo">◎</div>
+      <span>BTCRadar</span>
+      <button id="sidebar-close" class="sidebar-close" type="button">×</button>
+    </div>
+
+    <nav>
+      <a id="nav-dashboard" class="active" data-view="dashboard" data-title="₿ BTCRadar Dashboard">⌂ Dashboard</a>
+      <a id="nav-reports" data-view="reports" data-title="📊 Reports Center">📊 Reports</a>
+      <a id="nav-analytics" data-view="analytics" data-title="↗ Analytics">↗ Analytics</a>
+      <a id="nav-settings" data-view="settings" data-title="⚙ Settings">⚙ Settings</a>
+      <a id="nav-logs" data-view="logs" data-title="☷ Logs">☷ Logs</a>
+    </nav>
+
+    <section class="status-card">
+      <h3>System Status</h3>
+      <div class="status-row"><span>Binance</span><b id="st-binance" class="ok">Waiting</b></div>
+      <div class="status-row"><span>Price Feed</span><b id="st-price" class="ok">Waiting</b></div>
+      <div class="status-row"><span>LS Feed</span><b id="st-ls" class="ok">Waiting</b></div>
+      <div class="status-row"><span>Database</span><b class="ok">Live</b></div>
+
+      <div class="status-sep"></div>
+
+      <div class="muted-line">Last Price: <span id="last-price-age">--</span></div>
+      <div class="muted-line">Last LS: <span id="last-ls-age">--</span></div>
+      <div class="muted-line">Mode: <span id="data-mode">Real</span></div>
+    </section>
+
+    <footer>
+      BTCRadar<br>
+      <small>Independent from Hunter Bot</small>
+    </footer>
+  </aside>
+
+  <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+  <main class="main">
+    <header class="topbar">
+      <button id="mobile-menu-btn" class="mobile-menu-btn" type="button">☰</button>
+      <button id="desktop-sidebar-toggle" class="desktop-sidebar-toggle" type="button">☰</button>
+
+      <h1><span class="btc-title-icon">₿</span> BTCRadar Dashboard</h1>
+
+      <div class="top-actions">
+        <span class="live-dot"></span>
+        <span>Live</span>
+        <div class="countdown">
+          <span>LS Refresh</span>
+          <b id="ls-countdown">05:00</b>
+        </div>
+      </div>
+    </header>
+
+    <section id="dashboard-view" class="view-section active-view" style="display:block;">
+    <section class="performance-grid">
+      <div class="perf-card">
+        <small>Equity</small>
+        <strong id="perf-equity">--</strong>
+        <span id="perf-equity-pct" class="muted">--</span>
+      </div>
+
+      <div class="perf-card">
+        <small>Realized P/L</small>
+        <strong id="perf-realized">--</strong>
+        <span id="perf-trades" class="muted">-- trades</span>
+      </div>
+
+      <div class="perf-card">
+        <small>Win Rate</small>
+        <strong id="perf-winrate">--</strong>
+        <span id="perf-wins" class="muted">-- wins</span>
+      </div>
+
+      <div class="perf-card">
+        <small>Open Positions</small>
+        <strong id="perf-open-count">--</strong>
+        <span id="perf-open-pnl" class="muted">Open P/L --</span>
+      </div>
+
+      <div class="insight-card compact-insight spread-card">
+        <small>Spread Trend</small>
+        <strong id="spread-now">--</strong>
+        <span id="spread-history" class="muted">1H -- / 4H --</span>
+        <b id="spread-direction" class="muted">WAITING</b>
+      </div>
+
+      <div class="insight-card compact-insight exit-card">
+        <small>BTC Exit Monitor</small>
+        <strong id="exit-status">--</strong>
+        <span id="exit-rule" class="muted">--</span>
+        <b id="exit-distance" class="muted">--</b>
+      </div>
+    </section>
+
+
+    <section class="grid top-grid">
+      <div class="panel btc-panel">
+        <h2>₿ BTC Overview</h2>
+
+        <div class="price-line">
+          <span id="btc-price">--</span>
+          <small id="btc-source"></small>
+        </div>
+
+        <div class="metric"><span>LS_POSIT</span><b id="btc-ls-posit"></b></div>
+        <div class="metric"><span>LS_RATIO</span><b id="btc-ls-ratio"></b></div>
+        <div class="metric"><span>LS_ACCOUNT</span><b id="btc-ls-account"></b></div>
+        <div class="metric"><span>Funding</span><b id="btc-funding"></b></div>
+        <div class="metric"><span>OI (Open Interest)</span><b id="btc-oi"></b></div>
+        <div class="metric"><span>VWAP</span><b id="btc-vwap"></b></div>
+        <div class="metric read"><span>CVD Monitor</span><b id="btc-cvd"></b></div>
+      </div>
+
+      <div class="panel signal-panel" id="signal-panel">
+        <h2>🧬 BTC Narrative Signal</h2>
+
+        <div id="radar" class="radar neutral">
+          <div class="radar-text">
+            <strong id="signal-state">WAITING</strong>
+            <span id="signal-rec">WAIT</span>
+          </div>
+        </div>
+
+        <div class="signal-stats">
+          <div>
+            <small>Score</small>
+            <b id="sig-score">--</b>
+          </div>
+          <div>
+            <small>Spread</small>
+            <b id="sig-spread">--</b>
+          </div>
+          <div>
+            <small>Votes</small>
+            <b id="sig-votes">--</b>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel followers-panel">
+        <h2>✣ Followers Overview</h2>
+
+        <table class="followers-table cards-mode">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Price</th>
+              <th>Follow Score</th>
+              <th>LS_POSIT</th>
+              <th>LS_RATIO</th>
+              <th>LS_ACCOUNT</th>
+              <th>Funding</th>
+              <th>OI</th>
+              <th>CVD</th>
+            </tr>
+          </thead>
+          <tbody id="followers-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel manual-panel">
+      <div>
+        <h2>🎲 Manual Trading</h2>
+      </div>
+
+      <select id="trade-symbol">
+        {% for s in followers %}
+        <option value="{{s}}">{{s}}</option>
+        {% endfor %}
+      </select>
+
+      <input id="trade-size" type="number" value="100" min="1" />
+
+      <button class="long-btn" onclick="openTrade('LONG')" type="button">
+        Open LONG
+      </button>
+
+      <button class="short-btn" onclick="openTrade('SHORT')" type="button">
+        Open SHORT
+      </button>
+    </section>
+
+    <section class="grid trades-grid">
+      <div class="panel trades-panel">
+        <h2>🟢 Open Trades</h2>
+
+        <table class="trades-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Symbol</th>
+              <th>Direction</th>
+              <th>Size</th>
+              <th>Judgment</th>
+              <th>Entry</th>
+              <th>Current</th>
+              <th>PnL $</th>
+              <th>PnL %</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="open-trades"></tbody>
+        </table>
+      </div>
+
+      <div class="panel trades-panel">
+        <h2>🔵 Closed Trades</h2>
+
+        <table class="trades-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Symbol</th>
+              <th>Direction</th>
+              <th>Size</th>
+              <th>Judgment</th>
+              <th>Entry</th>
+              <th>Exit</th>
+              <th>PnL $</th>
+              <th>PnL %</th>
+            </tr>
+          </thead>
+          <tbody id="closed-trades"></tbody>
+        </table>
+      </div>
+    </section>
+    </section>
+
+    <section id="reports-view" class="view-section reports-view" style="display:none;">
+      <div class="reports-header">
+        <div>
+          <h2>📊 Reports Center</h2>
+          <p>Build validation reports from closed trades, decision snapshots, spread, judgment, symbol performance, and equity curve.</p>
+        </div>
+        <div class="reports-actions">
+          <button id="report-generate" class="report-primary" type="button">Generate Report</button>
+          <button id="report-print" type="button">Print / Save PDF</button>
+          <button id="report-csv" type="button">Download CSV</button>
+          <button id="report-json" type="button">Download JSON</button>
+        </div>
+      </div>
+
+      <section class="reports-builder panel">
+        <div class="report-control">
+          <h3>Period</h3>
+          <label><input type="radio" name="report-period" value="7d"> Last 7 Days</label>
+          <label><input type="radio" name="report-period" value="30d" checked> Last 30 Days</label>
+          <label><input type="radio" name="report-period" value="90d"> Last 90 Days</label>
+          <label><input type="radio" name="report-period" value="all"> All Time</label>
+        </div>
+
+        <div class="report-control">
+          <h3>Symbols</h3>
+          <label><input type="checkbox" class="report-symbol" value="ALL" checked> All</label>
+          {% for s in followers %}
+          <label><input type="checkbox" class="report-symbol" value="{{s}}"> {{s.replace('USDT','')}}</label>
+          {% endfor %}
+        </div>
+
+        <div class="report-control report-sections">
+          <h3>Sections</h3>
+          <label><input type="checkbox" class="report-section" value="performance" checked> Performance Summary</label>
+          <label><input type="checkbox" class="report-section" value="spread" checked> Spread Analysis</label>
+          <label><input type="checkbox" class="report-section" value="judgment" checked> Judgment Analysis</label>
+          <label><input type="checkbox" class="report-section" value="symbol" checked> Symbol Analysis</label>
+          <label><input type="checkbox" class="report-section" value="equity" checked> Equity Curve</label>
+        </div>
+      </section>
+
+      <section id="report-output" class="report-output panel">
+        <div class="report-empty">
+          Choose the report options, then click <b>Generate Report</b>.
+        </div>
+      </section>
+    </section>
+
+    <section id="analytics-view" class="view-section analytics-view" style="display:none;">
+      <div class="analytics-header">
+        <div>
+          <h2>↗ Analytics</h2>
+          <p>Historical pressure monitoring from Coinalyze. This page is for BTC and followers only.</p>
+        </div>
+        <div class="analytics-actions">
+          <button id="coinalyze-refresh" class="report-primary" type="button">Refresh Coinalyze Now</button>
+        </div>
+      </div>
+
+      <section class="panel coinalyze-status-panel">
+        <h2>📡 Coinalyze Status</h2>
+        <div class="coinalyze-status-grid">
+          <div><small>Enabled</small><b id="coinalyze-enabled">--</b></div>
+          <div><small>API Key</small><b id="coinalyze-configured">--</b></div>
+          <div><small>Refresh</small><b id="coinalyze-refresh-min">--</b></div>
+          <div><small>Last Refresh</small><b id="coinalyze-last-refresh">--</b></div>
+          <div><small>Rows Saved</small><b id="coinalyze-rows-saved">--</b></div>
+          <div><small>Error</small><b id="coinalyze-error">--</b></div>
+        </div>
+      </section>
+
+      <section class="panel coinalyze-panel">
+        <h2>BTC + Followers Pressure Intelligence</h2>
+        <table class="coinalyze-table intelligence-table">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Funding</th>
+              <th>Funding Trend</th>
+              <th>OI</th>
+              <th>OI Trend</th>
+              <th>Long Liq</th>
+              <th>Short Liq</th>
+              <th>Liq Trend</th>
+              <th>Pain</th>
+              <th>Entry Timing</th>
+              <th>Verdict</th>
+            </tr>
+          </thead>
+          <tbody id="coinalyze-body">
+            <tr class="empty-row"><td colspan="11">Waiting for Coinalyze data...</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="panel coinalyze-help-panel">
+        <h2>How to read this page</h2>
+        <div class="analytics-notes">
+          <div><b>EARLY / DEVELOPING</b><span>OI is building and liquidation pressure is still controlled. Entry quality may still be suitable.</span></div>
+          <div><b>LATE / AFTER FLUSH</b><span>OI is falling or liquidations already expanded. The move may have already happened.</span></div>
+          <div><b>Pain Score</b><span>Combines OI change, funding pressure, and liquidation activity into one timing/pressure score.</span></div>
+        </div>
+      </section>
+    </section>
+
+    <section id="settings-view" class="view-section placeholder-view" style="display:none;">
+      <div class="panel placeholder-panel">
+        <h2>⚙ Settings</h2>
+        <p class="muted">Settings page will be used later for configurable dashboard and strategy options.</p>
+      </div>
+    </section>
+
+    <section id="logs-view" class="view-section placeholder-view" style="display:none;">
+      <div class="panel placeholder-panel">
+        <h2>☷ Logs</h2>
+        <p class="muted">Logs page will be connected later to btc_radar.log.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/app.js?v=20260604-layout-cards-v2"></script>
+</body>
+</html>

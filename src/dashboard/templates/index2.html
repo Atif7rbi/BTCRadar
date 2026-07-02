@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BTCRadar Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <aside id="sidebar" class="sidebar">
+    <div class="brand">
+      <div class="logo">◎</div>
+      <span>BTCRadar</span>
+      <button id="sidebar-close" class="sidebar-close" type="button">×</button>
+    </div>
+
+    <nav>
+      <a class="active">⌂ Dashboard</a>
+      <a>⌁ Signals</a>
+      <a>↕ Manual Trading</a>
+      <a>▣ Open Trades</a>
+      <a>▤ Closed Trades</a>
+      <a>↗ Analytics</a>
+      <a>⚙ Settings</a>
+      <a>☷ Logs</a>
+    </nav>
+
+    <section class="status-card">
+      <h3>System Status</h3>
+      <div class="status-row"><span>Binance</span><b id="st-binance" class="ok">Waiting</b></div>
+      <div class="status-row"><span>Price Feed</span><b id="st-price" class="ok">Waiting</b></div>
+      <div class="status-row"><span>LS Feed</span><b id="st-ls" class="ok">Waiting</b></div>
+      <div class="status-row"><span>Database</span><b class="ok">Live</b></div>
+
+      <div class="status-sep"></div>
+
+      <div class="muted-line">Last Price: <span id="last-price-age">--</span></div>
+      <div class="muted-line">Last LS: <span id="last-ls-age">--</span></div>
+      <div class="muted-line">Mode: <span id="data-mode">Real</span></div>
+    </section>
+
+    <footer>
+      BTCRadar<br>
+      <small>Independent from Hunter Bot</small>
+    </footer>
+  </aside>
+
+  <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
+  <main class="main">
+    <header class="topbar">
+      <button id="mobile-menu-btn" class="mobile-menu-btn" type="button">☰</button>
+      <button id="desktop-sidebar-toggle" class="desktop-sidebar-toggle" type="button">☰</button>
+
+      <h1><span class="btc-title-icon">₿</span> BTCRadar Dashboard</h1>
+
+      <div class="top-actions">
+        <span class="live-dot"></span>
+        <span>Live</span>
+        <div class="countdown">
+          <span>LS Refresh</span>
+          <b id="ls-countdown">05:00</b>
+        </div>
+      </div>
+    </header>
+
+    <section class="performance-grid">
+      <div class="perf-card">
+        <small>Equity</small>
+        <strong id="perf-equity">--</strong>
+        <span id="perf-equity-pct" class="muted">--</span>
+      </div>
+
+      <div class="perf-card">
+        <small>Realized P/L</small>
+        <strong id="perf-realized">--</strong>
+        <span id="perf-trades" class="muted">-- trades</span>
+      </div>
+
+      <div class="perf-card">
+        <small>Win Rate</small>
+        <strong id="perf-winrate">--</strong>
+        <span id="perf-wins" class="muted">-- wins</span>
+      </div>
+
+      <div class="perf-card">
+        <small>Open Positions</small>
+        <strong id="perf-open-count">--</strong>
+        <span id="perf-open-pnl" class="muted">Open P/L --</span>
+      </div>
+    </section>
+
+    <section class="insights-grid">
+      <div class="insight-card">
+        <small>Spread Trend</small>
+        <strong id="spread-now">--</strong>
+        <span id="spread-history" class="muted">1H -- / 4H --</span>
+        <b id="spread-direction" class="muted">WAITING</b>
+      </div>
+
+      <div class="insight-card">
+        <small>BTC Exit Monitor</small>
+        <strong id="exit-status">--</strong>
+        <span id="exit-rule" class="muted">--</span>
+        <b id="exit-distance" class="muted">--</b>
+      </div>
+    </section>
+
+    <section class="grid top-grid">
+      <div class="panel btc-panel">
+        <h2>₿ BTC Overview</h2>
+
+        <div class="price-line">
+          <span id="btc-price">--</span>
+          <small id="btc-source"></small>
+        </div>
+
+        <div class="metric"><span>LS_POSIT</span><b id="btc-ls-posit"></b></div>
+        <div class="metric"><span>LS_RATIO</span><b id="btc-ls-ratio"></b></div>
+        <div class="metric"><span>LS_ACCOUNT</span><b id="btc-ls-account"></b></div>
+        <div class="metric"><span>Funding</span><b id="btc-funding"></b></div>
+        <div class="metric"><span>OI (Open Interest)</span><b id="btc-oi"></b></div>
+        <div class="metric"><span>VWAP</span><b id="btc-vwap"></b></div>
+        <div class="metric read"><span>CVD Monitor</span><b id="btc-cvd"></b></div>
+      </div>
+
+      <div class="panel signal-panel" id="signal-panel">
+        <h2>🧬 BTC Narrative Signal</h2>
+
+        <div id="radar" class="radar neutral">
+          <div class="radar-text">
+            <strong id="signal-state">WAITING</strong>
+            <span id="signal-rec">WAIT</span>
+          </div>
+        </div>
+
+        <div class="signal-stats">
+          <div>
+            <small>Score</small>
+            <b id="sig-score">--</b>
+          </div>
+          <div>
+            <small>Spread</small>
+            <b id="sig-spread">--</b>
+          </div>
+          <div>
+            <small>Votes</small>
+            <b id="sig-votes">--</b>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel followers-panel">
+        <h2>✣ Followers Overview</h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Price</th>
+              <th>Follow Score</th>
+              <th>LS_POSIT</th>
+              <th>LS_RATIO</th>
+              <th>LS_ACCOUNT</th>
+              <th>Funding</th>
+              <th>OI</th>
+              <th>CVD</th>
+            </tr>
+          </thead>
+          <tbody id="followers-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel manual-panel">
+      <div>
+        <h2>🎲 Manual Trading</h2>
+      </div>
+
+      <select id="trade-symbol">
+        {% for s in followers %}
+        <option value="{{s}}">{{s}}</option>
+        {% endfor %}
+      </select>
+
+      <input id="trade-size" type="number" value="100" min="1" />
+
+      <button class="long-btn" onclick="openTrade('LONG')" type="button">
+        Open LONG
+      </button>
+
+      <button class="short-btn" onclick="openTrade('SHORT')" type="button">
+        Open SHORT
+      </button>
+    </section>
+
+    <section class="grid trades-grid">
+      <div class="panel trades-panel">
+        <h2>🟢 Open Trades</h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Symbol</th>
+              <th>Direction</th>
+              <th>Size</th>
+              <th>Judgment</th>
+              <th>Entry</th>
+              <th>Current</th>
+              <th>PnL $</th>
+              <th>PnL %</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="open-trades"></tbody>
+        </table>
+      </div>
+
+      <div class="panel trades-panel">
+        <h2>🔵 Closed Trades</h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Symbol</th>
+              <th>Direction</th>
+              <th>Size</th>
+              <th>Judgment</th>
+              <th>Entry</th>
+              <th>Exit</th>
+              <th>PnL $</th>
+              <th>PnL %</th>
+            </tr>
+          </thead>
+          <tbody id="closed-trades"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/app.js?v=20260603-spread-fix"></script>
+</body>
+</html>
