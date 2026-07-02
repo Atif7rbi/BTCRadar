@@ -48,7 +48,7 @@ def create_app() -> Flask:
 
     # Passenger/shared hosting must not depend on daemon collector threads.
     # Cron owns Coinalyze refresh. Flask only loads cached snapshots and serves requests.
-    market.start()
+    market.bootstrap_from_cache()
 
     app = Flask(
         __name__,
