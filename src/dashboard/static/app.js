@@ -897,6 +897,44 @@ function parseJobDetails(job){
   }
 }
 
+function computeOpsHealth(latest, jobs, endpoints){
+  const recent=Array.isArray(jobs) ? jobs.slice(0,10) : [];
+  const failures=recent.filter(j=>String(j.status||'').toLowerCase()!=='success').length;
+  const durations=recent
+    .map(j=>Number(j.duration_ms))
+    .filter(v=>!Number.isNaN(v) && v>0);
+
+  const avgMs=durations.length ? durations.reduce((a,b)=>a+b,0)/durations.length : null;
+  const endpointFailures=(endpoints||[]).filter(ep=>!ep.ok).length;
+  const cronAge=latest ? ageFromIso(latest.finished_at) : null;
+
+  let score=100;
+  if(!latest) score-=60;
+  if(latest && String(latest.status||'').toLowerCase()!=='success') score-=40;
+  if(cronAge!==null && cronAge>CRON_REFRESH_SEC*2) score-=25;
+  score-=Math.min(30, failures*10);
+  score-=Math.min(25, endpointFailures*10);
+  if(avgMs!==null && avgMs>10000) score-=15;
+  if(avgMs!==null && avgMs>20000) score-=20;
+
+  score=Math.max(0, Math.min(100, Math.round(score)));
+
+  return {
+    score,
+    failures,
+    avgMs,
+    endpointFailures,
+    cronAge,
+  };
+}
+
+function opsClass(score){
+  const n=Number(score||0);
+  if(n>=90) return 'ok';
+  if(n>=70) return 'warn';
+  return 'bad';
+}
+
 function renderJobsStatus(data){
   if(!data) return;
   const latest=data.latest || null;
@@ -907,6 +945,7 @@ function renderJobsStatus(data){
   const status=latest ? String(latest.status||'--').toUpperCase() : '--';
   const statusCls=status==='SUCCESS'?'ok':(status==='FAILED'?'bad':'warn');
   const nextSec=latest ? cronCountdownFromJob(latest) : null;
+  const ops=computeOpsHealth(latest, jobs, endpoints);
 
   const statusEl=document.getElementById('logs-job-status');
   if(statusEl){
@@ -919,6 +958,19 @@ function renderJobsStatus(data){
   setText('logs-job-rows', latest ? String(latest.rows_saved ?? '--') : '--');
   setText('logs-job-duration', latest && latest.duration_ms!==null && latest.duration_ms!==undefined ? (Number(latest.duration_ms)/1000).toFixed(2)+'s' : '--');
   setText('logs-job-error', latest && latest.error ? latest.error : 'None');
+
+  const healthEl=document.getElementById('ops-health-score');
+  if(healthEl){
+    healthEl.textContent=ops.score+'%';
+    healthEl.className=opsClass(ops.score);
+  }
+  setText('ops-cron-health', ops.cronAge!==null && ops.cronAge<CRON_REFRESH_SEC*2 ? 'OK' : 'DELAYED');
+  setClass('ops-cron-health', ops.cronAge!==null && ops.cronAge<CRON_REFRESH_SEC*2 ? 'ok' : 'warn');
+  setText('ops-endpoint-health', ops.endpointFailures===0 ? 'OK' : `${ops.endpointFailures} FAIL`);
+  setClass('ops-endpoint-health', ops.endpointFailures===0 ? 'ok' : 'bad');
+  setText('ops-avg-duration', ops.avgMs===null ? '--' : (ops.avgMs/1000).toFixed(2)+'s');
+  setText('ops-failure-count', String(ops.failures));
+  setClass('ops-failure-count', ops.failures===0 ? 'ok' : 'bad');
 
   const endpointsBody=document.getElementById('jobs-endpoints-body');
   if(endpointsBody){

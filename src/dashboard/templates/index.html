@@ -509,14 +509,24 @@
 
     <section id="logs-view" class="view-section logs-view" style="display:none;">
       <section class="panel">
-        <h2>☷ Logs Center</h2>
+        <h2>☷ Hosting Operations Center</h2>
+
         <div class="system-status-grid">
+          <div><small>System Health</small><b id="ops-health-score">--</b></div>
+          <div><small>Cron Health</small><b id="ops-cron-health">--</b></div>
+          <div><small>Endpoint Health</small><b id="ops-endpoint-health">--</b></div>
+          <div><small>Avg Duration</small><b id="ops-avg-duration">--</b></div>
+          <div><small>Failures</small><b id="ops-failure-count">--</b></div>
+          <div><small>Last Error</small><b id="logs-job-error">--</b></div>
+        </div>
+
+        <div class="system-status-grid" style="margin-top:12px;">
           <div><small>Cron Status</small><b id="logs-job-status">--</b></div>
           <div><small>Last Success</small><b id="logs-last-success">--</b></div>
           <div><small>Next Run</small><b id="logs-next-run">--</b></div>
           <div><small>Rows Saved</small><b id="logs-job-rows">--</b></div>
           <div><small>Duration</small><b id="logs-job-duration">--</b></div>
-          <div><small>Last Error</small><b id="logs-job-error">--</b></div>
+          <div><small>Mode</small><b>Hosting</b></div>
         </div>
       </section>
 
