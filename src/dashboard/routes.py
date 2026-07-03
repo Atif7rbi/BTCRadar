@@ -348,7 +348,7 @@ def create_dashboard(market, signal_service, trade_service, trade_store, cfg: di
         # This never triggers Coinalyze or any heavy refresh.
         try:
             market.bootstrap_from_cache()
-            market.refresh_binance_ls_overlay_if_needed()
+            # Binance LS overlay disabled on hosting; LS fallback stays from Coinalyze/SQLite.
             market.refresh_price_overlay_if_needed()
         except Exception:
             pass
