@@ -1,4 +1,8 @@
 const CVD_TREND_WINDOW_MS=15*60*1000;
+const PRICE_REFRESH_MS=5000;
+const CRON_REFRESH_SEC=15*60;
+let lastDashboardState=null;
+let latestJobStatus=null;
 const cvdUiHistory={};
 
 function fmtNum(v, digits=2){
@@ -113,6 +117,52 @@ function countdown(sec){
   sec=Math.max(0,sec||0);
   let m=Math.floor(sec/60), s=sec%60;
   return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+
+function parseIsoTs(value){
+  if(!value) return null;
+  const t=Date.parse(value);
+  return Number.isNaN(t) ? null : Math.floor(t/1000);
+}
+
+function ageFromIso(value){
+  const ts=parseIsoTs(value);
+  if(!ts) return null;
+  return Math.max(0, Math.floor(Date.now()/1000)-ts);
+}
+
+function cronCountdownFromJob(job){
+  const finished=job ? parseIsoTs(job.finished_at) : null;
+  if(!finished) return null;
+  const next=finished+CRON_REFRESH_SEC;
+  return Math.max(0, next-Math.floor(Date.now()/1000));
+}
+
+function mergePriceFallback(data){
+  if(!lastDashboardState) return data;
+  if(data && data.btc && lastDashboardState.btc){
+    if(data.btc.price===null || data.btc.price===undefined) data.btc.price=lastDashboardState.btc.price;
+    if(!data.btc.price_updated_at) data.btc.price_updated_at=lastDashboardState.btc.price_updated_at;
+  }
+  const prevBySymbol={};
+  for(const r of (lastDashboardState.followers||[])){
+    prevBySymbol[String(r.symbol||'').toUpperCase()]=r;
+  }
+  for(const r of (data.followers||[])){
+    const prev=prevBySymbol[String(r.symbol||'').toUpperCase()];
+    if(prev && (r.price===null || r.price===undefined)) r.price=prev.price;
+  }
+  return data;
+}
+
+function setText(id, value){
+  const el=document.getElementById(id);
+  if(el) el.textContent=value;
+}
+
+function setClass(id, cls){
+  const el=document.getElementById(id);
+  if(el) el.className=cls;
 }
 
 function clsPnl(v){
@@ -703,25 +753,41 @@ function renderTrades(openRows, closedRows){
   }
 }
 
-function renderStatus(st){
+function renderStatus(st, jobs){
   if(!st) return;
 
-  document.getElementById('st-binance').textContent=st.binance;
-  document.getElementById('st-price').textContent=st.price_feed;
-  document.getElementById('st-ls').textContent=st.ls_feed;
+  const latest=jobs && jobs.latest ? jobs.latest : null;
+  const hosting=!!latest;
 
-  document.getElementById('last-price-age').textContent=age(st.last_price_age_sec);
-  document.getElementById('last-ls-age').textContent=age(st.last_ls_age_sec);
-  document.getElementById('data-mode').textContent=st.mock_data?'Mock':'Real';
-  document.getElementById('ls-countdown').textContent=countdown(st.ls_countdown_sec);
+  setText('st-main-label', hosting ? 'Cron Worker' : 'MarketService');
+  setText('st-price-label', hosting ? 'Price Overlay' : 'Price Feed');
+  setText('st-heavy-label', hosting ? 'SQLite Snapshot' : 'LS Feed');
+  setText('st-db-label', hosting ? 'SQLite' : 'Database');
 
-  const lsAge=Number(st.last_ls_age_sec||0);
-  const lsRefresh=Number(st.ls_refresh_sec||300);
-  const lsEl=document.getElementById('st-ls');
+  const cronOk=latest && String(latest.status||'').toLowerCase()==='success';
+  const cronAge=latest ? ageFromIso(latest.finished_at) : null;
 
-  if(lsEl){
-    lsEl.className=lsAge>(lsRefresh*1.5)?'bad':(lsAge>lsRefresh?'warn':'ok');
-  }
+  setText('st-binance', hosting ? (cronOk ? 'Live' : 'Check') : (st.binance || 'Live'));
+  setClass('st-binance', hosting ? (cronOk ? 'ok' : 'warn') : 'ok');
+
+  setText('st-price', st.price_feed || 'Live');
+  setClass('st-price', 'ok');
+
+  setText('st-ls', hosting ? (cronAge!==null && cronAge<CRON_REFRESH_SEC*2 ? 'Live' : 'Delayed') : (st.ls_feed || 'Live'));
+  setClass('st-ls', hosting ? (cronAge!==null && cronAge<CRON_REFRESH_SEC*2 ? 'ok' : 'warn') : 'ok');
+
+  setText('last-price-age', age(st.last_price_age_sec));
+  setText('last-ls-age', hosting && latest ? age(cronAge) : age(st.last_ls_age_sec));
+  setText('data-mode', hosting ? 'Hosting' : (st.mock_data?'Mock':'Local'));
+
+  const priceTop=document.getElementById('price-age-top');
+  if(priceTop) priceTop.textContent=countdown(Math.min(Number(st.last_price_age_sec||0), 599));
+
+  const cronTop=document.getElementById('cron-countdown');
+  if(cronTop) cronTop.textContent=latest ? countdown(cronCountdownFromJob(latest)) : countdown(st.ls_countdown_sec);
+
+  const oldLs=document.getElementById('ls-countdown');
+  if(oldLs) oldLs.textContent=latest ? countdown(cronCountdownFromJob(latest)) : countdown(st.ls_countdown_sec);
 }
 function renderSpreadTrend(data){
   if(!data) return;
@@ -820,9 +886,48 @@ function renderExitMonitor(data){
     status.className = statusBadgeClass('exit', label);
   }
 }
+
+function renderJobsStatus(data){
+  if(!data) return;
+  const latest=data.latest || null;
+  const jobs=Array.isArray(data.jobs) ? data.jobs : [];
+
+  setText('logs-job-status', latest ? String(latest.status||'--').toUpperCase() : '--');
+  setText('logs-job-rows', latest ? String(latest.rows_saved ?? '--') : '--');
+  setText('logs-job-duration', latest && latest.duration_ms!==null && latest.duration_ms!==undefined ? (Number(latest.duration_ms)/1000).toFixed(2)+'s' : '--');
+  setText('logs-job-finished', latest && latest.finished_at ? new Date(latest.finished_at).toLocaleString() : '--');
+
+  const body=document.getElementById('jobs-log-body');
+  if(!body) return;
+
+  if(!jobs.length){
+    body.innerHTML='<tr class="empty-row"><td colspan="5">No Cron history yet.</td></tr>';
+    return;
+  }
+
+  body.innerHTML=jobs.map(j=>{
+    const status=String(j.status||'--').toUpperCase();
+    const cls=status==='SUCCESS'?'ok':(status==='FAILED'?'bad':'warn');
+    const started=j.started_at ? new Date(j.started_at).toLocaleString() : '--';
+    const dur=j.duration_ms!==null && j.duration_ms!==undefined ? (Number(j.duration_ms)/1000).toFixed(2)+'s' : '--';
+    return `<tr>
+      <td>${started}</td>
+      <td><span class="${cls}">${status}</span></td>
+      <td>${j.rows_saved ?? '--'}</td>
+      <td>${dur}</td>
+      <td>${j.error || 'None'}</td>
+    </tr>`;
+  }).join('');
+}
+
 async function refresh(){
   try{
-    const data=await api('/api/state');
+    const [stateData, jobsData]=await Promise.all([
+      api('/api/state'),
+      api('/api/jobs/status').catch(()=>null)
+    ]);
+    const data=mergePriceFallback(stateData);
+    latestJobStatus=jobsData;
 
     renderBTC(data.btc);
     renderSignal(data.signal);
@@ -831,7 +936,10 @@ async function refresh(){
     renderFollowersConsensus(data.followers_consensus, data.followers);
     renderPerformance(data.performance);
     renderTrades(data.open_trades,data.closed_trades);
-    renderStatus(data.status);
+    renderStatus(data.status, jobsData);
+    renderJobsStatus(jobsData);
+
+    lastDashboardState=data;
   }
   catch(e){
     console.error(e);
@@ -1293,7 +1401,7 @@ function renderCoinalyzeState(data){
   body.innerHTML='';
 
   if(!rows.length){
-    body.innerHTML='<tr class="empty-row"><td colspan="12">No Coinalyze data yet. Wait for hourly refresh or click Refresh Coinalyze Now.</td></tr>';
+    body.innerHTML='<tr class="empty-row"><td colspan="12">No Coinalyze data yet. Wait for the Cron refresh cycle.</td></tr>';
     return;
   }
 

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BTCRadar Dashboard</title>
-  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="{{ url_for('dashboard.static', filename='style.css') }}?v=ui-cleanup-v1" />
 </head>
 <body>
   <aside id="sidebar" class="sidebar">
@@ -42,8 +42,12 @@
         <span class="live-dot"></span>
         <span>Live</span>
         <div class="countdown">
-          <span>LS Refresh</span>
-          <b id="ls-countdown">05:00</b>
+          <span>Price</span>
+          <b id="price-age-top">--</b>
+        </div>
+        <div class="countdown">
+          <span>Cron Refresh</span>
+          <b id="cron-countdown">--:--</b>
         </div>
       </div>
     </header>
@@ -259,13 +263,13 @@
     <section class="panel system-status-horizontal">
       <h2>System Status</h2>
       <div class="system-status-grid">
-        <div><small>Binance</small><b id="st-binance" class="ok">Waiting</b></div>
-        <div><small>Price Feed</small><b id="st-price" class="ok">Waiting</b></div>
-        <div><small>LS Feed</small><b id="st-ls" class="ok">Waiting</b></div>
-        <div><small>Database</small><b class="ok">Live</b></div>
-        <div><small>Last Price</small><span id="last-price-age">--</span></div>
-        <div><small>Last LS</small><span id="last-ls-age">--</span></div>
-        <div><small>Mode</small><span id="data-mode">Real</span></div>
+        <div><small id="st-main-label">Cron Worker</small><b id="st-binance" class="ok">Waiting</b></div>
+        <div><small id="st-price-label">Price Overlay</small><b id="st-price" class="ok">Waiting</b></div>
+        <div><small id="st-heavy-label">SQLite Snapshot</small><b id="st-ls" class="ok">Waiting</b></div>
+        <div><small id="st-db-label">SQLite</small><b id="st-db" class="ok">Live</b></div>
+        <div><small id="last-price-label">Last Price</small><span id="last-price-age">--</span></div>
+        <div><small id="last-heavy-label">Last Cron</small><span id="last-ls-age">--</span></div>
+        <div><small id="data-mode-label">Mode</small><span id="data-mode">Hosting</span></div>
       </div>
     </section>
     </section>
@@ -503,11 +507,27 @@
       </div>
     </section>
 
-    <section id="logs-view" class="view-section placeholder-view" style="display:none;">
-      <div class="panel placeholder-panel">
+    <section id="logs-view" class="view-section logs-view" style="display:none;">
+      <section class="panel">
         <h2>☷ Logs</h2>
-        <p class="muted">Logs page will be connected later to btc_radar.log.</p>
-      </div>
+        <div class="system-status-grid">
+          <div><small>Last Cron Status</small><b id="logs-job-status">--</b></div>
+          <div><small>Rows Saved</small><b id="logs-job-rows">--</b></div>
+          <div><small>Duration</small><b id="logs-job-duration">--</b></div>
+          <div><small>Finished</small><b id="logs-job-finished">--</b></div>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>Recent Cron Runs</h2>
+        <table class="coinalyze-table">
+          <thead>
+            <tr><th>Started</th><th>Status</th><th>Rows</th><th>Duration</th><th>Error</th></tr>
+          </thead>
+          <tbody id="jobs-log-body">
+            <tr class="empty-row"><td colspan="5">Waiting for Cron history...</td></tr>
+          </tbody>
+        </table>
+      </section>
     </section>
   </main>
 
