@@ -139,6 +139,7 @@ class MarketService:
         self.snapshots: dict[str, SymbolSnapshot] = {}
         self.last_price_update: float = 0
         self.last_ls_update: float = 0
+        self.last_binance_ls_update: float = 0
         self.cvd_trend_window_sec = int(cfg.get('runtime', {}).get('cvd_trend_window_sec', 900))
         self._cvd_history: dict[str, deque[tuple[float, float]]] = defaultdict(deque)
         self._stop = False
@@ -398,6 +399,66 @@ class MarketService:
             except Exception as exc:  # noqa: BLE001
                 self.log.warning('price overlay failed for %s: %s', sym, exc)
         self.last_price_update = time.time()
+
+    def refresh_binance_ls_overlay_if_needed(self, *, force: bool = False) -> None:
+        """Refresh real Binance LS layers without touching Coinalyze heavy fields.
+
+        Coinalyze supplies one LS source. Binance supplies the three dashboard
+        layers separately:
+        - LS_POSIT   = topLongShortPositionRatio
+        - LS_RATIO   = globalLongShortAccountRatio
+        - LS_ACCOUNT = topLongShortAccountRatio
+        """
+        now_ts = time.time()
+        interval = int(self.cfg.get('runtime', {}).get('binance_ls_refresh_sec', self.ls_interval or 900))
+
+        latest_snapshot_ls_ts = 0.0
+        for snap in self.snapshots.values():
+            ts = getattr(snap, 'ls_updated_at', None)
+            if not ts:
+                continue
+            try:
+                latest_snapshot_ls_ts = max(
+                    latest_snapshot_ls_ts,
+                    datetime.fromisoformat(str(ts).replace('Z', '+00:00')).timestamp()
+                )
+            except Exception:
+                pass
+
+        db_may_have_overwritten_ls = latest_snapshot_ls_ts > self.last_binance_ls_update
+
+        if not force and self.last_binance_ls_update and (now_ts - self.last_binance_ls_update) < interval and not db_may_have_overwritten_ls:
+            return
+
+        if not self.snapshots:
+            self.bootstrap_from_cache()
+
+        updated = 0
+        for sym in self.symbols:
+            snap = self.snapshots.get(sym) or SymbolSnapshot(symbol=sym, updated_at='')
+            try:
+                lp, sp = self.client.ls_posit(sym, '15m')
+                lr, sr = self.client.ls_ratio(sym, '15m')
+                la, sa = self.client.ls_account(sym, '15m')
+
+                snap.ls_posit_long, snap.ls_posit_short = lp, sp
+                snap.ls_ratio_long, snap.ls_ratio_short = lr, sr
+                snap.ls_account_long, snap.ls_account_short = la, sa
+
+                ts = datetime.now(timezone.utc).isoformat()
+                snap.ls_updated_at = ts
+                snap.updated_at = ts
+
+                self.snapshots[sym] = snap
+                self.store.insert(snap)
+                updated += 1
+            except Exception as exc:  # noqa: BLE001
+                self.log.warning('Binance LS overlay failed for %s: %s', sym, exc)
+
+        if updated:
+            self.last_binance_ls_update = time.time()
+            self.last_ls_update = self.last_binance_ls_update
+
 
     def refresh_heavy_cycle(self, coinalyze_collector=None) -> dict:
         """One-shot heavy cycle for Cron.
