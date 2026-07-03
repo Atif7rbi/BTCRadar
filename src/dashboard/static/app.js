@@ -887,32 +887,75 @@ function renderExitMonitor(data){
   }
 }
 
+function parseJobDetails(job){
+  if(!job || !job.details_json) return {};
+  try{
+    return typeof job.details_json==='string' ? JSON.parse(job.details_json) : job.details_json;
+  }
+  catch(e){
+    return {};
+  }
+}
+
 function renderJobsStatus(data){
   if(!data) return;
   const latest=data.latest || null;
   const jobs=Array.isArray(data.jobs) ? data.jobs : [];
+  const details=parseJobDetails(latest);
+  const endpoints=(details.coinalyze && Array.isArray(details.coinalyze.endpoints)) ? details.coinalyze.endpoints : [];
 
-  setText('logs-job-status', latest ? String(latest.status||'--').toUpperCase() : '--');
+  const status=latest ? String(latest.status||'--').toUpperCase() : '--';
+  const statusCls=status==='SUCCESS'?'ok':(status==='FAILED'?'bad':'warn');
+  const nextSec=latest ? cronCountdownFromJob(latest) : null;
+
+  const statusEl=document.getElementById('logs-job-status');
+  if(statusEl){
+    statusEl.textContent=status;
+    statusEl.className=statusCls;
+  }
+
+  setText('logs-last-success', latest && latest.finished_at ? new Date(latest.finished_at).toLocaleString() : '--');
+  setText('logs-next-run', nextSec===null ? '--' : countdown(nextSec));
   setText('logs-job-rows', latest ? String(latest.rows_saved ?? '--') : '--');
   setText('logs-job-duration', latest && latest.duration_ms!==null && latest.duration_ms!==undefined ? (Number(latest.duration_ms)/1000).toFixed(2)+'s' : '--');
-  setText('logs-job-finished', latest && latest.finished_at ? new Date(latest.finished_at).toLocaleString() : '--');
+  setText('logs-job-error', latest && latest.error ? latest.error : 'None');
+
+  const endpointsBody=document.getElementById('jobs-endpoints-body');
+  if(endpointsBody){
+    if(!endpoints.length){
+      endpointsBody.innerHTML='<tr class="empty-row"><td colspan="4">No endpoint details yet.</td></tr>';
+    }
+    else{
+      endpointsBody.innerHTML=endpoints.map(ep=>{
+        const ok=!!ep.ok;
+        return `<tr>
+          <td>${ep.endpoint || '--'}</td>
+          <td><span class="${ok?'ok':'bad'}">${ok?'OK':'FAIL'}</span></td>
+          <td>${ep.rows ?? '--'}</td>
+          <td>${ep.duration_ms!==null && ep.duration_ms!==undefined ? (Number(ep.duration_ms)/1000).toFixed(2)+'s' : '--'}</td>
+        </tr>`;
+      }).join('');
+    }
+  }
 
   const body=document.getElementById('jobs-log-body');
   if(!body) return;
 
   if(!jobs.length){
-    body.innerHTML='<tr class="empty-row"><td colspan="5">No Cron history yet.</td></tr>';
+    body.innerHTML='<tr class="empty-row"><td colspan="6">No Cron history yet.</td></tr>';
     return;
   }
 
   body.innerHTML=jobs.map(j=>{
-    const status=String(j.status||'--').toUpperCase();
-    const cls=status==='SUCCESS'?'ok':(status==='FAILED'?'bad':'warn');
+    const st=String(j.status||'--').toUpperCase();
+    const cls=st==='SUCCESS'?'ok':(st==='FAILED'?'bad':'warn');
     const started=j.started_at ? new Date(j.started_at).toLocaleString() : '--';
+    const finished=j.finished_at ? new Date(j.finished_at).toLocaleString() : '--';
     const dur=j.duration_ms!==null && j.duration_ms!==undefined ? (Number(j.duration_ms)/1000).toFixed(2)+'s' : '--';
     return `<tr>
       <td>${started}</td>
-      <td><span class="${cls}">${status}</span></td>
+      <td>${finished}</td>
+      <td><span class="${cls}">${st}</span></td>
       <td>${j.rows_saved ?? '--'}</td>
       <td>${dur}</td>
       <td>${j.error || 'None'}</td>
