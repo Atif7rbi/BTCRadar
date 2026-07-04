@@ -370,6 +370,54 @@ class MarketService:
         snap.ls_ratio_short = ls_short
         snap.ls_account_long = ls_long
         snap.ls_account_short = ls_short
+
+        # OKX Provider overlay:
+        # - LS_RATIO / LS_ACCOUNT / LS_POSIT replace the temporary Coinalyze single-LS copy.
+        # - Funding / OI / taker flow are stored in the existing snapshot fields.
+        try:
+            from src.collectors.okx_provider import OKXProvider
+
+            okx = getattr(self, "_okx_provider", None)
+            if okx is None:
+                timeout = int(self.cfg.get("runtime", {}).get("api_timeout_sec", 8))
+                okx = OKXProvider(timeout=timeout, period="5m")
+                self._okx_provider = okx
+
+            okx_ls = okx.get_ls_snapshot(snap.symbol)
+
+            if okx_ls.ls_ratio:
+                snap.ls_ratio_long = okx_ls.ls_ratio.long_pct
+                snap.ls_ratio_short = okx_ls.ls_ratio.short_pct
+
+            if okx_ls.ls_account:
+                snap.ls_account_long = okx_ls.ls_account.long_pct
+                snap.ls_account_short = okx_ls.ls_account.short_pct
+
+            if okx_ls.ls_posit:
+                snap.ls_posit_long = okx_ls.ls_posit.long_pct
+                snap.ls_posit_short = okx_ls.ls_posit.short_pct
+
+            okx_funding = okx.get_funding_rate(snap.symbol)
+            if okx_funding is not None:
+                snap.funding = okx_funding
+
+            okx_oi = okx.get_open_interest(snap.symbol)
+            if okx_oi is not None:
+                snap.oi = okx_oi
+
+            buy_vol, sell_vol, flow_delta = okx.get_taker_flow(snap.symbol)
+            if buy_vol is not None:
+                snap.cvd_buy_vol = buy_vol
+            if sell_vol is not None:
+                snap.cvd_sell_vol = sell_vol
+            if flow_delta is not None:
+                snap.cvd = flow_delta
+
+        except Exception as exc:
+            try:
+                self.log.warning("OKX provider overlay failed for %s: %s", snap.symbol, exc)
+            except Exception:
+                pass
         if ls_ratio is not None:
             setattr(snap, 'coinalyze_ls_ratio', ls_ratio)
         snap.ls_updated_at = now
