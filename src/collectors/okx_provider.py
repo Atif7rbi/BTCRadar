@@ -147,7 +147,7 @@ class OKXProvider:
         if not data:
             return None
         row = data[0]
-        return float(row.get("oiCcy") or row.get("oi") or 0)
+        return float(row.get("oiUsd") or row.get("oiCcy") or row.get("oi") or 0)
 
     def get_taker_flow(self, symbol: str) -> tuple[float | None, float | None, float | None]:
         """Return buy_vol, sell_vol, delta. Best-effort OKX taker volume proxy for CVD."""
@@ -175,4 +175,26 @@ class OKXProvider:
             return buy_vol, sell_vol, buy_vol - sell_vol
 
         return None, None, None
+
+    def get_mark_price(self, symbol: str) -> float | None:
+        meta = OKX_SYMBOLS[symbol]
+        payload = self._get(
+            "/api/v5/public/mark-price",
+            {"instType": "SWAP", "instId": meta["inst_id"]},
+        )
+        data = payload.get("data") or []
+        if not data:
+            return None
+        return float(data[0].get("markPx"))
+
+    def get_last_price(self, symbol: str) -> float | None:
+        meta = OKX_SYMBOLS[symbol]
+        payload = self._get(
+            "/api/v5/market/ticker",
+            {"instId": meta["inst_id"]},
+        )
+        data = payload.get("data") or []
+        if not data:
+            return None
+        return float(data[0].get("last"))
 

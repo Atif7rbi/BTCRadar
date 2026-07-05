@@ -53,7 +53,13 @@ def utc_now() -> str:
 @dataclass
 class SymbolSnapshot:
     symbol: str
+
+    # Compatibility field (will be removed later)
     price: Optional[float] = None
+
+    # New price architecture
+    mark_price: Optional[float] = None
+    last_price: Optional[float] = None
     ls_posit_long: Optional[float] = None
     ls_posit_short: Optional[float] = None
     ls_ratio_long: Optional[float] = None

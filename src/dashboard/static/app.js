@@ -274,17 +274,17 @@ function fmtMoney(v){
   if(v===null||v===undefined||Number.isNaN(Number(v))) return '--';
   const n=Number(v);
   const sign=n>0?'+':'';
-  return sign+'$'+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  return sign+'$'+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3});
 }
 
 function fmtEquity(v){
   if(v===null||v===undefined) return '--';
-  return '$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  return '$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3});
 }
 
 function fmtSize(v){
   if(v===null||v===undefined) return '--';
-  return '$'+Number(v).toLocaleString(undefined,{maximumFractionDigits:2});
+  return '$'+Number(v).toLocaleString(undefined,{maximumFractionDigits:3});
 }
 
 function fmtJudgment(v){
@@ -434,8 +434,28 @@ function renderPerformance(p){
 function renderBTC(btc){
   if(!btc) return;
 
-  document.getElementById('btc-price').textContent=fmtPrice(btc.price);
-  document.getElementById('btc-source').textContent='Live';
+  document.getElementById('btc-price').textContent = fmtPrice(btc.mark_price ?? btc.price);
+
+  const btcSubPrice = document.getElementById('btc-source');
+  const subPrice = btc.last_price ?? btc.price;
+
+  if (subPrice !== null && subPrice !== undefined && Number(subPrice) > 0) {
+    btcSubPrice.textContent =
+      Number(subPrice).toLocaleString(undefined,{
+        minimumFractionDigits:3,
+        maximumFractionDigits:3
+      });
+    btcSubPrice.classList.remove('live-price-up', 'live-price-down', 'live-price-flat');
+
+    const mark = Number(btc.mark_price ?? btc.price);
+    const last = Number(subPrice);
+
+    if (Number.isFinite(mark) && Number.isFinite(last)) {
+      if (last > mark) btcSubPrice.classList.add('live-price-up');
+      else if (last < mark) btcSubPrice.classList.add('live-price-down');
+      else btcSubPrice.classList.add('live-price-flat');
+    }
+  }
 
   document.getElementById('btc-ls-posit').innerHTML=lsPair(btc.ls_posit_long, btc.ls_posit_short);
   document.getElementById('btc-ls-ratio').innerHTML=lsPair(btc.ls_ratio_long, btc.ls_ratio_short);

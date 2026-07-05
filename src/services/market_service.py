@@ -321,6 +321,16 @@ class MarketService:
             if not row:
                 continue
             snap = self._snapshot_from_row(row)
+
+            # Preserve live in-memory prices from 5s price overlay.
+            prev = self.snapshots.get(sym)
+            if prev is not None:
+                for field in ('mark_price', 'last_price', 'price'):
+                    prev_val = getattr(prev, field, None)
+                    snap_val = getattr(snap, field, None)
+                    if prev_val is not None and snap_val is None:
+                        setattr(snap, field, prev_val)
+
             self.snapshots[sym] = snap
             loaded += 1
             if snap.price_updated_at:
@@ -433,11 +443,33 @@ class MarketService:
             return
         if not self.snapshots:
             self.bootstrap_from_cache()
+        try:
+            from src.collectors.okx_provider import OKXProvider
+            okx = getattr(self, "_okx_provider", None)
+            if okx is None:
+                timeout = int(self.cfg.get("runtime", {}).get("api_timeout_sec", 8))
+                okx = OKXProvider(timeout=timeout, period="5m")
+                self._okx_provider = okx
+        except Exception:
+            okx = None
+
         preferred = self.price_router.next_tick_provider()
         for sym in self.symbols:
             snap = self.snapshots.get(sym) or SymbolSnapshot(symbol=sym, updated_at='')
             try:
-                snap.price = self.price_router.price(sym, preferred=preferred)
+                if okx is not None:
+                    mark_price = okx.get_mark_price(sym)
+                    last_price = okx.get_last_price(sym)
+                    if mark_price is not None:
+                        snap.mark_price = mark_price
+                    if last_price is not None:
+                        snap.last_price = last_price
+                        snap.price = last_price  # compatibility for followers tables
+                else:
+                    fallback_price = self.price_router.price(sym, preferred=preferred)
+                    snap.last_price = fallback_price
+                    snap.price = fallback_price
+
                 ts = datetime.now(timezone.utc).isoformat()
                 snap.price_updated_at = ts
                 snap.updated_at = ts

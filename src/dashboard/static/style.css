@@ -5081,3 +5081,31 @@ td{
   border-top:1px solid rgba(90,160,220,.14);
   border-radius:0 0 12px 12px;
 }
+
+
+.btc-price-row{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+}
+
+.btc-price-row small{
+  display:block;
+  margin-top:3px;
+  font-size:13px;
+  font-weight:600;
+  line-height:1.1;
+  opacity:.95;
+}
+
+.live-price-up{
+  color:#22c55e !important;
+}
+
+.live-price-down{
+  color:#ef4444 !important;
+}
+
+.live-price-flat{
+  color:#94a3b8 !important;
+}

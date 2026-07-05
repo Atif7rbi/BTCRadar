@@ -71,6 +71,10 @@ def main() -> int:
             values = dict(prev)
             values.pop("id", None)
 
+            # Price fields are owned by the 5-second Flask price overlay, not Cron.
+            for k in ("price", "mark_price", "last_price", "price_updated_at"):
+                values.pop(k, None)
+
             values.update({
                 "symbol": symbol,
                 "ls_posit_long": ls.ls_posit.long_pct,

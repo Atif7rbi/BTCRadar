@@ -9,11 +9,11 @@ class SnapshotStore:
     def insert(self, s: SymbolSnapshot):
         with self.db.connect() as con:
             con.execute('''INSERT INTO btc_radar_snapshots
-            (symbol, price, ls_posit_long, ls_posit_short, ls_ratio_long, ls_ratio_short,
+            (symbol, price, mark_price, last_price, ls_posit_long, ls_posit_short, ls_ratio_long, ls_ratio_short,
              ls_account_long, ls_account_short, funding, oi, vwap, cvd, cvd_buy_vol, cvd_sell_vol,
              price_updated_at, ls_updated_at, updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
-            (s.symbol, s.price, s.ls_posit_long, s.ls_posit_short, s.ls_ratio_long, s.ls_ratio_short,
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+            (s.symbol, s.price, s.mark_price, s.last_price, s.ls_posit_long, s.ls_posit_short, s.ls_ratio_long, s.ls_ratio_short,
              s.ls_account_long, s.ls_account_short, s.funding, s.oi, s.vwap, s.cvd, s.cvd_buy_vol, s.cvd_sell_vol,
              s.price_updated_at, s.ls_updated_at, s.updated_at))
 

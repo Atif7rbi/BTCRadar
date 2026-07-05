@@ -3,3 +3,8 @@ PassengerAppRoot "/home/sewaellf/public_html/Sniper/btcradar"
 PassengerBaseURI "/Sniper/btcradar"
 PassengerPython "/home/sewaellf/virtualenv/public_html/Sniper/btcradar/3.11/bin/python"
 # DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION BEGIN
+PassengerAppRoot "/home/sewaellf/public_html/Sniper/btcradar"
+PassengerBaseURI "/Sniper/btcradar"
+PassengerPython "/home/sewaellf/virtualenv/public_html/Sniper/btcradar/3.11/bin/python"
+# DO NOT REMOVE. CLOUDLINUX PASSENGER CONFIGURATION END
