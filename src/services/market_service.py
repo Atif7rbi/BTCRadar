@@ -11,6 +11,8 @@ from ..collectors.snapshot_builder import SnapshotBuilder
 from ..models import SymbolSnapshot
 from ..storage.snapshots import SnapshotStore
 from ..logger import get_logger
+from src.runtime.live_price_engine import LivePriceEngine
+from src.runtime.runtime_state import runtime_state
 
 
 def _safe_float(value):
@@ -135,6 +137,7 @@ class MarketService:
         self.price_interval = int(cfg.get('runtime', {}).get('price_refresh_sec', 60))
         self.ls_interval = int(cfg.get('runtime', {}).get('ls_refresh_sec', 300))
         self.symbols = [cfg['symbols']['driver']] + list(cfg['symbols'].get('followers', []))
+        self.live_price_engine = LivePriceEngine(self.symbols, cfg)
         self.snapshots: dict[str, SymbolSnapshot] = {}
         self.last_price_update: float = 0
         self.last_ls_update: float = 0
@@ -434,49 +437,45 @@ class MarketService:
         return snap
 
     def refresh_price_overlay_if_needed(self, *, force: bool = False) -> None:
-        """Lightweight price-only refresh for Flask requests.
+        """Runtime V2 price overlay.
 
-        This never calls Coinalyze and never rebuilds heavy snapshots.
+        Read live prices from RuntimeState only.
+        This method must not fetch from OKX, Binance, Coinalyze, or any provider.
+        It only overlays RuntimeState prices onto in-memory snapshots for UI compatibility.
         """
         now_ts = time.time()
         if not force and self.last_price_update and (now_ts - self.last_price_update) < self.price_interval:
             return
+
         if not self.snapshots:
             self.bootstrap_from_cache()
-        try:
-            from src.collectors.okx_provider import OKXProvider
-            okx = getattr(self, "_okx_provider", None)
-            if okx is None:
-                timeout = int(self.cfg.get("runtime", {}).get("api_timeout_sec", 8))
-                okx = OKXProvider(timeout=timeout, period="5m")
-                self._okx_provider = okx
-        except Exception:
-            okx = None
 
-        preferred = self.price_router.next_tick_provider()
+        # LivePriceEngine is the only owner allowed to fetch prices.
+        self.live_price_engine.refresh_if_needed(force=force)
+
+        ts = datetime.now(timezone.utc).isoformat()
+
         for sym in self.symbols:
             snap = self.snapshots.get(sym) or SymbolSnapshot(symbol=sym, updated_at='')
-            try:
-                if okx is not None:
-                    mark_price = okx.get_mark_price(sym)
-                    last_price = okx.get_last_price(sym)
-                    if mark_price is not None:
-                        snap.mark_price = mark_price
-                    if last_price is not None:
-                        snap.last_price = last_price
-                        snap.price = last_price  # compatibility for followers tables
-                else:
-                    fallback_price = self.price_router.price(sym, preferred=preferred)
-                    snap.last_price = fallback_price
-                    snap.price = fallback_price
+            price = runtime_state.get_price(sym)
 
-                ts = datetime.now(timezone.utc).isoformat()
+            mark_price = _safe_float(price.get('mark_price'))
+            last_price = _safe_float(price.get('last_price'))
+
+            if mark_price is not None:
+                snap.mark_price = mark_price
+
+            if last_price is not None:
+                snap.last_price = last_price
+                snap.price = last_price  # UI compatibility only, not SQLite source of truth
+
+            if mark_price is not None or last_price is not None:
                 snap.price_updated_at = ts
                 snap.updated_at = ts
                 self.snapshots[sym] = snap
-            except Exception as exc:  # noqa: BLE001
-                self.log.warning('price overlay failed for %s: %s', sym, exc)
+
         self.last_price_update = time.time()
+
     def refresh_heavy_cycle(self, coinalyze_collector=None) -> dict:
         """One-shot heavy cycle for Cron.
 
@@ -517,18 +516,17 @@ class MarketService:
         }
 
     def refresh_full(self):
-        for sym in self.symbols:
-            try:
-                s = self.builder.build_full(sym)
-                self._attach_next_funding(sym, s)
-                self._attach_cvd_15m_trend(sym, s, record=True)
-                self.snapshots[sym] = s
-                self.store.insert(s)
-            except Exception as e:
-                self.log.warning('full refresh failed for %s: %s', sym, e)
-        self._maybe_record_market_monitor_snapshot()
-        self.last_ls_update = time.time()
-        self.last_price_update = self.last_ls_update
+        """Legacy full refresh disabled in Runtime Layer V2.
+
+        This old path mixed live price fetching with analytics snapshots.
+        Runtime V2 separates ownership:
+          - live prices: Live Price Engine / OKX runtime
+          - analytics: refresh_heavy_cycle() / SQLite
+
+        Keep this method as a safe no-op to avoid accidental old-path writes.
+        """
+        self.log.warning('refresh_full() is disabled in Runtime Layer V2; use refresh_heavy_cycle()')
+        return {'ok': False, 'status': 'disabled_runtime_v2'}
 
     def refresh_prices(self):
         self.refresh_price_overlay_if_needed(force=True)
